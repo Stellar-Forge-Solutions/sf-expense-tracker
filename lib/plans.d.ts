@@ -33,7 +33,7 @@ export function planState(
 
 export function upgradeUrl(
   shop: any,
-  email: string | null | undefined,
+  email?: string | null,
   renew?: boolean,
   plan?: "basic" | "pro"
 ): string;
