@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Nav from "@/components/Nav";
 import { createClient } from "@/lib/supabase/client";
 import { useShop } from "@/lib/shop";
+import PlanCard from "@/components/PlanCard";
 
 export default function SettingsPage() {
   const supabase = createClient();
@@ -35,6 +36,7 @@ export default function SettingsPage() {
       <main className="flex-1 p-4 md:p-6 space-y-5 pb-24 max-w-xl">
         <div><h1 className="text-xl md:text-2xl font-bold">Settings</h1>
           <p className="text-masala-brown/60 text-xs md:text-sm">{canWrite ? (ex?.paid_until ? "Plan active" : "Free trial") : "View only"}{end && ` · until ${new Date(end).toLocaleDateString("en-IN")}`}</p></div>
+        <PlanCard />
         <div className="card p-5 space-y-3">
           <h2 className="font-semibold">Shop details</h2>
           {(["name", "mobile", "whatsapp"] as const).map((k) => (

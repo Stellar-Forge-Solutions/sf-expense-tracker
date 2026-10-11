@@ -3,6 +3,7 @@ import { ReactNode, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useShop } from "@/lib/shop";
+import { upgradeUrl } from "@/lib/plans";
 
 const hhmm = (d: string) => new Date(d).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" });
 const daysLeft = (d: string) => Math.ceil((new Date(d).getTime() - Date.now()) / 864e5);
@@ -67,5 +68,9 @@ export default function ShopGate({ children }: { children: ReactNode }) {
   const bar = !canWrite
     ? "View only: your Expense Tracker trial has ended. You can view your data, but adding or editing is off. Contact Stellar Forge to continue."
     : !paid && end && daysLeft(end) <= 5 ? `Free trial: ${Math.max(daysLeft(end), 0)} day(s) left.` : "";
-  return <>{bar && <div className={`${canWrite ? "bg-amber-500" : "bg-red-600"} text-white text-sm text-center py-2 px-3`}>{bar}</div>}{children}</>;
+  return <>{bar && (
+    <div className={`${canWrite ? "bg-amber-500" : "bg-red-600"} text-white text-sm text-center py-2 px-3`}>
+      {bar}{" "}
+      <a href={upgradeUrl(shop)} target="_blank" rel="noopener noreferrer" className="font-bold underline whitespace-nowrap">⭐ Upgrade to Basic plan</a>
+    </div>)}{children}</>;
 }
