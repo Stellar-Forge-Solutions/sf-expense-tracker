@@ -9,6 +9,7 @@ import TrendChart from "@/components/TrendChart";
 import { currentFinYear } from "@/lib/finance";
 import { TrendingUp, TrendingDown, Wallet, PiggyBank } from "lucide-react";
 import QuickAdd from "@/components/QuickAdd";
+import PlanCard from "@/components/PlanCard";
 
 export default function DashboardPage() {
   const supabase = createClient();
@@ -90,6 +91,7 @@ export default function DashboardPage() {
           </div>
           <QuickAdd />
         </div>
+        <PlanCard compact />
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <KpiCard label="This month — Sales" value={monthSale} icon={TrendingUp} />
           <KpiCard label="This month — Purchases" value={monthPurchase} icon={TrendingDown} />
