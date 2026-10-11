@@ -1,0 +1,71 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { sendMail } from "@/lib/gmail";
+export const runtime = "nodejs";
+
+const esc = (s: any) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
+const DISPOSABLE = new Set(["mailinator.com", "guerrillamail.com", "10minutemail.com", "tempmail.com", "yopmail.com", "trashmail.com", "sharklasers.com", "getnada.com"]);
+const ten = (v: any) => String(v || "").replace(/\D/g, "").slice(-10);
+const err = (error: string, status: number) => NextResponse.json({ error }, { status });
+
+function normalizeEmail(e: string) {
+  const [l, d] = e.trim().toLowerCase().split("@");
+  return ["gmail.com", "googlemail.com"].includes(d) ? l.split("+")[0].replace(/\./g, "") + "@gmail.com" : l.split("+")[0] + "@" + d;
+}
+// Review due = 1 working hour later (9:00-21:00 IST).
+function reviewDue(now = new Date()) {
+  const IST = 330 * 60e3, t = new Date(now.getTime() + IST), open = 540, close = 1260;
+  let cur = t.getUTCHours() * 60 + t.getUTCMinutes(), day = 0, need = 60;
+  if (cur < open) cur = open;
+  if (cur >= close) { cur = open; day = 1; }
+  if (need > close - cur) { need -= close - cur; day += 1; cur = open + need; } else cur += need;
+  return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() + day, 0, cur) - IST);
+}
+const hhmm = (d: Date) => d.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" });
+
+export async function POST(req: NextRequest) {
+  const b: any = await req.json().catch(() => ({}));
+  if (b.company_site) return NextResponse.json({ ok: true }); // honeypot
+  const email = String(b.email || "").trim().toLowerCase();
+  const name = String(b.name || "").trim().slice(0, 80), owner = String(b.owner_name || "").trim().slice(0, 80);
+  const mobile = ten(b.mobile), whatsapp = ten(b.whatsapp || b.mobile), password = String(b.password || "");
+  const city = String(b.city || "").trim().slice(0, 60) || null, btype = String(b.business_type || "").trim().slice(0, 60) || null;
+  const ref = /^https?:\/\/\S+$/i.test(String(b.ref_link || "").trim()) ? String(b.ref_link).trim().slice(0, 300) : null;
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return err("Enter a valid email", 400);
+  if (password.length < 8) return err("Password must be at least 8 characters", 400);
+  if (!name || !owner) return err("Shop name and owner name are required", 400);
+  if (mobile.length !== 10 || whatsapp.length !== 10) return err("Enter 10-digit mobile and WhatsApp numbers", 400);
+
+  const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+  const norm = normalizeEmail(email);
+  const [{ data: b1 }, { data: b2 }, { data: dup }] = await Promise.all([
+    sb.from("blocklist").select("value").eq("kind", "email").eq("value", norm).maybeSingle(),
+    sb.from("blocklist").select("value").eq("kind", "mobile").eq("value", mobile).maybeSingle(),
+    sb.from("shops").select("id").eq("email_normalized", norm).maybeSingle(),
+  ]);
+  if (b1 || b2) return err("This account cannot be created. Please contact Stellar Forge.", 403);
+  if (dup) return err("This email is already registered. Sign in and start your Expense Tracker trial from there.", 409);
+
+  const { data: u, error: ue } = await sb.auth.admin.createUser({ email, password, email_confirm: true });
+  if (ue || !u?.user) return err(/regist|exist/i.test(ue?.message || "") ? "This email is already registered. Please sign in." : "Could not create account", /regist|exist/i.test(ue?.message || "") ? 409 : 500);
+
+  const due = reviewDue();
+  const { data: shop, error: se } = await sb.from("shops").insert({
+    owner_id: u.user.id, email, email_normalized: norm, name, owner_name: owner, mobile, whatsapp,
+    city, business_type: btype, ref_link: ref, signup_product: "expenses", review_due_at: due.toISOString(),
+  }).select().single();
+  if (se || !shop) { await sb.auth.admin.deleteUser(u.user.id); return err(se?.code === "23505" ? "This email is already registered." : "Could not create shop", se?.code === "23505" ? 409 : 500); }
+
+  const flags: string[] = [];
+  if (DISPOSABLE.has(email.split("@")[1])) flags.push("disposable email domain");
+  const { count } = await sb.from("shops").select("id", { count: "exact", head: true }).or(`mobile.eq.${mobile},whatsapp.eq.${whatsapp}`).neq("id", shop.id);
+  if (count) flags.push(`mobile/WhatsApp already used by ${count} other shop(s)`);
+  try {
+    await sendMail({
+      to: String(process.env.ADMIN_EMAILS || "").split(",").map((s) => s.trim()).filter(Boolean),
+      subject: `New signup (Expense Tracker): ${name}, review by ${hhmm(due)} IST`,
+      html: `<h3>New shop signup, product: Expense Tracker</h3><p><b>${esc(name)}</b> · ${esc(owner)}<br>Mobile: ${mobile}<br>WhatsApp: <a href="https://wa.me/91${whatsapp}">${whatsapp} (tap to chat)</a><br>Email: ${esc(email)}<br>City: ${esc(city || "-")} · Business: ${esc(btype || "-")}${ref ? `<br>Link: ${esc(ref)}` : ""}</p><p>Signed up: ${hhmm(new Date())} IST · <b>Review by: ${hhmm(due)} IST</b></p><p>Flags: ${flags.length ? esc(flags.join("; ")) : "none"}</p><p><a href="${process.env.ADMIN_DASH_URL}" style="background:#00c9a7;color:#0f1923;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600">Review in dashboard</a></p>`,
+    });
+  } catch (e: any) { console.error("alert email failed", e.message); }
+  return NextResponse.json({ ok: true });
+}
