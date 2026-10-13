@@ -1,6 +1,6 @@
 // Starts this shop's own 15-day Expense Tracker trial (once per email).
 import { createClient } from '@supabase/supabase-js'
-import { json } from '../_lib/http.js'
+import { json } from '../../_lib/http.js'
 
 export async function onRequest({ request, env }) {
   if (request.method !== 'POST') return new Response(null, { status: 405 })
