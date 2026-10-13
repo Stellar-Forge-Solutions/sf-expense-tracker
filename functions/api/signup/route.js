@@ -1,14 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { sendMail } from "@/lib/gmail";
-export const runtime = "nodejs";
+import { sendMail } from "../_lib/gmail.js";
+import { json } from "../_lib/http.js";
 
-const esc = (s: any) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string));
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const DISPOSABLE = new Set(["mailinator.com", "guerrillamail.com", "10minutemail.com", "tempmail.com", "yopmail.com", "trashmail.com", "sharklasers.com", "getnada.com"]);
-const ten = (v: any) => String(v || "").replace(/\D/g, "").slice(-10);
-const err = (error: string, status: number) => NextResponse.json({ error }, { status });
+const ten = (v) => String(v || "").replace(/\D/g, "").slice(-10);
+const err = (error, status) => json({ error }, status);
 
-function normalizeEmail(e: string) {
+function normalizeEmail(e) {
   const [l, d] = e.trim().toLowerCase().split("@");
   return ["gmail.com", "googlemail.com"].includes(d) ? l.split("+")[0].replace(/\./g, "") + "@gmail.com" : l.split("+")[0] + "@" + d;
 }
@@ -21,11 +20,12 @@ function reviewDue(now = new Date()) {
   if (need > close - cur) { need -= close - cur; day += 1; cur = open + need; } else cur += need;
   return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() + day, 0, cur) - IST);
 }
-const hhmm = (d: Date) => d.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" });
+const hhmm = (d) => d.toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "2-digit", minute: "2-digit" });
 
-export async function POST(req: NextRequest) {
-  const b: any = await req.json().catch(() => ({}));
-  if (b.company_site) return NextResponse.json({ ok: true }); // honeypot
+export async function onRequest({ request, env }) {
+  if (request.method !== "POST") return new Response(null, { status: 405 });
+  const b = (await request.json().catch(() => ({}))) || {};
+  if (b.company_site) return json({ ok: true }); // honeypot
   const email = String(b.email || "").trim().toLowerCase();
   const name = String(b.name || "").trim().slice(0, 80), owner = String(b.owner_name || "").trim().slice(0, 80);
   const mobile = ten(b.mobile), whatsapp = ten(b.whatsapp || b.mobile), password = String(b.password || "");
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
   if (!name || !owner) return err("Shop name and owner name are required", 400);
   if (mobile.length !== 10 || whatsapp.length !== 10) return err("Enter 10-digit mobile and WhatsApp numbers", 400);
 
-  const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
+  const sb = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
   const norm = normalizeEmail(email);
   const [{ data: b1 }, { data: b2 }, { data: dup }] = await Promise.all([
     sb.from("blocklist").select("value").eq("kind", "email").eq("value", norm).maybeSingle(),
@@ -56,16 +56,16 @@ export async function POST(req: NextRequest) {
   }).select().single();
   if (se || !shop) { await sb.auth.admin.deleteUser(u.user.id); return err(se?.code === "23505" ? "This email is already registered." : "Could not create shop", se?.code === "23505" ? 409 : 500); }
 
-  const flags: string[] = [];
+  const flags = [];
   if (DISPOSABLE.has(email.split("@")[1])) flags.push("disposable email domain");
   const { count } = await sb.from("shops").select("id", { count: "exact", head: true }).or(`mobile.eq.${mobile},whatsapp.eq.${whatsapp}`).neq("id", shop.id);
   if (count) flags.push(`mobile/WhatsApp already used by ${count} other shop(s)`);
   try {
-    await sendMail({
-      to: String(process.env.ADMIN_EMAILS || "").split(",").map((s) => s.trim()).filter(Boolean),
+    await sendMail(env, {
+      to: String(env.ADMIN_EMAILS || "").split(",").map((s) => s.trim()).filter(Boolean),
       subject: `New signup (Expense Tracker): ${name}, review by ${hhmm(due)} IST`,
-      html: `<h3>New shop signup, product: Expense Tracker</h3><p><b>${esc(name)}</b> · ${esc(owner)}<br>Mobile: ${mobile}<br>WhatsApp: <a href="https://wa.me/91${whatsapp}">${whatsapp} (tap to chat)</a><br>Email: ${esc(email)}<br>City: ${esc(city || "-")} · Business: ${esc(btype || "-")}${ref ? `<br>Link: ${esc(ref)}` : ""}</p><p>Signed up: ${hhmm(new Date())} IST · <b>Review by: ${hhmm(due)} IST</b></p><p>Flags: ${flags.length ? esc(flags.join("; ")) : "none"}</p><p><a href="${process.env.ADMIN_DASH_URL}" style="background:#00c9a7;color:#0f1923;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600">Review in dashboard</a></p>`,
+      html: `<h3>New shop signup, product: Expense Tracker</h3><p><b>${esc(name)}</b> · ${esc(owner)}<br>Mobile: ${mobile}<br>WhatsApp: <a href="https://wa.me/91${whatsapp}">${whatsapp} (tap to chat)</a><br>Email: ${esc(email)}<br>City: ${esc(city || "-")} · Business: ${esc(btype || "-")}${ref ? `<br>Link: ${esc(ref)}` : ""}</p><p>Signed up: ${hhmm(new Date())} IST · <b>Review by: ${hhmm(due)} IST</b></p><p>Flags: ${flags.length ? esc(flags.join("; ")) : "none"}</p><p><a href="${env.ADMIN_DASH_URL}" style="background:#00c9a7;color:#0f1923;padding:10px 16px;border-radius:8px;text-decoration:none;font-weight:600">Review in dashboard</a></p>`,
     });
-  } catch (e: any) { console.error("alert email failed", e.message); }
-  return NextResponse.json({ ok: true });
+  } catch (e) { console.error("alert email failed", e.message); }
+  return json({ ok: true });
 }

@@ -2,4 +2,6 @@ node_modules
 .next
 .env
 .env.local
-.vercel
+.dev.vars
+out
+.wrangler

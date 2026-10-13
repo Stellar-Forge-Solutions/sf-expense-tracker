@@ -327,7 +327,7 @@ Each Stellar Forge product has its own trial and its own plan. These are the **E
 
 ## 13. Tech stack and project structure
 
-**Stack:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Supabase (database and authentication), Recharts (charts), lucide-react (icons), Vercel (hosting), Gmail API (admin alert emails).
+**Stack:** Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS, Supabase (database and authentication), Recharts (charts), lucide-react (icons), Cloudflare Pages (static export hosting and Pages Functions API), Gmail API (admin alert emails).
 
 ```
 sf-expense-tracker/
@@ -341,13 +341,15 @@ sf-expense-tracker/
     purchase-vendors/        Vendor purchases
     settings/page.tsx        Plan card, shop details, Billing connection
     login/, signup/          Authentication
-    api/signup/route.ts      Self-signup, spam checks, admin alert
-    api/start-trial/route.ts Starts the shop's own 15-day Expense Tracker trial
   components/                Nav, ShopGate (approval and trial gate), PlanCard, QuickAdd,
                              KpiCard, DataTable, TrendChart, TxnPage, LoginShowcase
   lib/                       supabase clients, shop context, finance helpers, whatsapp
-                             messages, plans (prices + upgrade WhatsApp link), gmail
-  public/                    icons and logo
+                             messages, plans (prices + upgrade WhatsApp link)
+  functions/                 Cloudflare Pages Functions (served under /api)
+    api/signup.js            Self-signup, spam checks, admin alert
+    api/start-trial.js       Starts the shop's own 15-day Expense Tracker trial
+    _lib/gmail.js, http.js   Gmail sender and JSON helper
+  public/                    icons, logo, _headers (security headers), _redirects
 ```
 
 ---
@@ -355,7 +357,7 @@ sf-expense-tracker/
 ## 14. Deploy and configuration
 
 1. Deploy **sf-admin-dash** first (it applies migrations 0001 to 0003 to Supabase). This repo has no migrations.
-2. Push this folder to its own GitHub repo, then in Vercel: Add New Project (Next.js is detected). Add the environment variables from `.env.example`.
+2. Push this folder to its own GitHub repo, then in Cloudflare: Workers & Pages, Create, Pages, Connect to Git. Framework preset **None**, build command `npm run build`, output directory `out`. Add the environment variables from `.env.example` (Settings, Variables and Secrets). Add the server-only ones as **Encrypted**. In Settings, Functions, set the daily limit behaviour to **Fail closed**.
 3. In Supabase, go to Authentication, Providers, Email and turn **OFF** "Allow new users to sign up" (signup goes through `/api/signup`).
 
 | Variable | Where | Purpose |
@@ -368,11 +370,16 @@ sf-expense-tracker/
 | `ADMIN_EMAILS` | Server only | Who is alerted about new signups |
 | `ADMIN_DASH_URL` | Server only | Link to the admin dashboard |
 
+The app is a static export (`output: "export"` in `next.config.js`), so it has no Next.js server. The `/api` routes are Pages Functions in `functions/`.
+
 ```bash
 npm install
-npm run dev     # start locally
-npm run build   # production build
+npm run dev     # UI only (the /api routes are not served by next dev)
+npm run build   # static build into ./out
+npx wrangler pages dev out   # run the built site with the /api functions
 ```
+
+For local API testing, put the server-only values in `.dev.vars` (never commit it).
 
 ---
 

@@ -1,5 +1,7 @@
 import { MetadataRoute } from "next";
 
+export const dynamic = "force-static"; // required for `output: "export"`
+
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Stellar Forge Expense Tracker",
