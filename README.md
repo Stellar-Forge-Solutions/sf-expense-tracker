@@ -319,6 +319,8 @@ Each Stellar Forge product has its own trial and its own plan. These are the **E
 
 **What happens after the free trial?** The shop becomes view-only. Tap **Upgrade to Basic plan** to message us on WhatsApp. Basic is ₹99 per month or ₹799 per year.
 
+**What happens after 100 free entries?** Once the 100 free manual entries per month are exceeded, each additional entry costs ₹0.10 (₹10 per 100 entries). The overage charge is added to your next WhatsApp-based plan upgrade. Your data remains intact and the app continues to work in view-only mode until you upgrade to Basic or Pro plan.
+
 **How do I pay?** The upgrade button opens WhatsApp with a ready message. We share the payment details and activate your plan after payment.
 
 **My bills are counted twice in sales.** Delete the manual sales you entered for the days that Billing sales were connected, or disconnect Billing sales in Settings.
