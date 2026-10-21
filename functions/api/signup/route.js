@@ -44,7 +44,7 @@ export async function onRequest({ request, env }) {
     sb.from("shops").select("id").eq("email_normalized", norm).maybeSingle(),
   ]);
   if (b1 || b2) return err("This account cannot be created. Please contact Stellar Forge.", 403);
-  if (dup) return err("This email is already registered. Sign in and start your Expense Tracker trial from there.", 409);
+  if (dup) return err("This email is already registered. Sign in to your existing account.", 409);
 
   const { data: u, error: ue } = await sb.auth.admin.createUser({ email, password, email_confirm: true });
   if (ue || !u?.user) return err(/regist|exist/i.test(ue?.message || "") ? "This email is already registered. Please sign in." : "Could not create account", /regist|exist/i.test(ue?.message || "") ? 409 : 500);

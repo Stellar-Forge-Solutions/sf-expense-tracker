@@ -172,3 +172,26 @@ table.data-table td {
 .page-header {
   @apply flex items-center justify-between gap-3 flex-wrap;
 }
+
+/* ==================================================================
+   Ad banner — print and export safety
+   ================================================================== */
+@media print {
+  .ad-slot,
+  .ad-label {
+    display: none !important;
+  }
+}
+
+/* Ensure 24px gap between ad and any adjacent content */
+.ad-slot {
+  margin-top: 32px;
+  margin-bottom: 0;
+}
+
+@media (max-width: 600px) {
+  .ad-slot ins.adsbygoogle,
+  .ad-slot > div {
+    min-height: 50px;
+  }
+}

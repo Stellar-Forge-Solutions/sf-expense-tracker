@@ -7,15 +7,19 @@ import PlanCard from "@/components/PlanCard";
 
 export default function SettingsPage() {
   const supabase = createClient();
-  const { shop, ents, canWrite, reload } = useShop();
+  const { shop, ents, planResult, canWrite, reload } = useShop();
   const [f, setF] = useState({ name: "", mobile: "", whatsapp: "" });
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   useEffect(() => { if (shop) setF({ name: shop.name || "", mobile: shop.mobile || "", whatsapp: shop.whatsapp || "" }); }, [shop]);
 
-  const ex = ents.find((e) => e.product === "expenses");
   const billing = ents.find((e) => e.product === "billing");
-  const end = ex?.paid_until || ex?.trial_ends_at;
+  const { tier } = planResult;
+
+  const planLabel =
+    tier === "pro" ? "Pro plan" :
+    tier === "basic" ? "Basic plan" :
+    "Free plan";
 
   async function save() {
     const d = (v: string) => v.replace(/\D/g, "").slice(-10);
@@ -34,8 +38,10 @@ export default function SettingsPage() {
     <div className="flex flex-col md:flex-row min-h-screen">
       <Nav />
       <main className="flex-1 p-4 md:p-6 space-y-5 pb-24 max-w-xl">
-        <div><h1 className="text-xl md:text-2xl font-bold">Settings</h1>
-          <p className="text-masala-brown/60 text-xs md:text-sm">{canWrite ? (ex?.paid_until ? "Plan active" : "Free trial") : "View only"}{end && ` · until ${new Date(end).toLocaleDateString("en-IN")}`}</p></div>
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold">Settings</h1>
+          <p className="text-masala-brown/60 text-xs md:text-sm">{planLabel} · {shop?.name}</p>
+        </div>
         <PlanCard />
         <div className="card p-5 space-y-3">
           <h2 className="font-semibold">Shop details</h2>
@@ -47,7 +53,8 @@ export default function SettingsPage() {
         <div className="card p-5 space-y-3">
           <h2 className="font-semibold">Connect Billing sales</h2>
           <p className="text-sm text-masala-brown/70">Adds each day&apos;s printed bills from Stellar Forge Billing as one automatic sale. Past bills are added too, so remove any manual sales you already entered for the same days to avoid counting them twice.</p>
-          {!billing && <p className="text-sm text-masala-red">Billing is not enabled for this login yet. Sign in to Stellar Forge Billing with the same email and start its trial first.</p>}
+          <p className="text-xs text-masala-brown/50">Billing-synced sales do not count toward your monthly entry limit on any plan.</p>
+          {!billing && <p className="text-sm text-masala-red">Billing is not enabled for this login yet. Sign in to Stellar Forge Billing with the same email.</p>}
           {shop?.sync_sales
             ? <button className="btn-ghost" disabled={busy} onClick={() => toggle(false)}>Disconnect (removes automatic billing sales)</button>
             : <button className="btn-primary" disabled={busy || !billing || !canWrite} onClick={() => toggle(true)}>Connect Billing sales</button>}

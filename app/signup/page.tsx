@@ -30,7 +30,10 @@ export default function SignupPage() {
       <form onSubmit={submit} className="card w-full max-w-sm p-8">
         <div className="flex items-center gap-3 mb-5">
           <div className="w-11 h-11 rounded-full bg-masala-gradient flex items-center justify-center"><img src="/sf-mark-light.png" alt="" className="w-7 h-7" /></div>
-          <div><h1 className="font-bold text-lg leading-tight">Stellar Forge</h1><p className="text-xs text-masala-brown/60">Start your 15-day free trial</p></div>
+          <div>
+            <h1 className="font-bold text-lg leading-tight">Stellar Forge</h1>
+            <p className="text-xs text-masala-brown/60">Start free · 100 entries/month included</p>
+          </div>
         </div>
         {field("Shop name", "name", { required: true, maxLength: 80 })}
         {field("Owner name", "owner_name", { required: true, maxLength: 80 })}
@@ -45,7 +48,7 @@ export default function SignupPage() {
         <input name="company_site" value={f.company_site} onChange={set("company_site")} tabIndex={-1} autoComplete="off" aria-hidden="true" style={{ position: "absolute", left: "-9999px" }} />
         {err && <p className="text-masala-red text-sm mb-3">{err}</p>}
         <button className="btn-primary w-full" disabled={busy}>{busy ? "Creating..." : "Create account"}</button>
-        <p className="text-xs text-masala-brown/50 mt-4">We review every new shop within 1 hour (9 am – 9 pm IST) and message you on WhatsApp. Your trial starts when you are approved.</p>
+        <p className="text-xs text-masala-brown/50 mt-4">We review every new shop within 1 hour (9 am – 9 pm IST) and message you on WhatsApp. Your free plan starts when you are approved.</p>
       </form>
       <Link href="/login" className="text-sm mt-4 underline">Already have an account? Sign in</Link>
       <p className="text-[11px] text-masala-brown/40 mt-4">Powered by Stellar Forge</p>

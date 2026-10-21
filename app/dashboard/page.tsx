@@ -10,10 +10,14 @@ import { currentFinYear } from "@/lib/finance";
 import { TrendingUp, TrendingDown, Wallet, PiggyBank } from "lucide-react";
 import QuickAdd from "@/components/QuickAdd";
 import PlanCard from "@/components/PlanCard";
+import EntryUsageWidget from "@/components/EntryUsageWidget";
+import AdBanner from "@/components/AdBanner";
+import { useShop } from "@/lib/shop";
 
 export default function DashboardPage() {
   const supabase = createClient();
   const router = useRouter();
+  const { planResult, reload: reloadShop } = useShop();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>({});
 
@@ -79,6 +83,9 @@ export default function DashboardPage() {
   const { fy, monthSale, monthPurchase, monthExpense, fySale, fyPurchase, fyExpense, recent, chartData } = data;
   const monthNet = monthSale - monthPurchase - monthExpense;
   const fyNet = fySale - fyPurchase - fyExpense;
+  const tier = planResult.tier;
+  const showAds = tier === "free";
+  const dataLoaded = recent.length > 0;
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen">
@@ -89,17 +96,30 @@ export default function DashboardPage() {
             <h1 className="text-xl md:text-2xl font-bold">Overview</h1>
             <p className="text-masala-brown/60 text-xs md:text-sm">Financial year {fy}</p>
           </div>
-          <QuickAdd />
+          <QuickAdd onDone={() => { loadData(); reloadShop(); }} />
         </div>
-        <PlanCard compact />
+
+        {/* Entry usage widget — Free and Basic plans only */}
+        <EntryUsageWidget />
+
+        {/* Summary KPI cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <KpiCard label="This month — Sales" value={monthSale} icon={TrendingUp} />
           <KpiCard label="This month — Purchases" value={monthPurchase} icon={TrendingDown} />
           <KpiCard label="This month — Expenses" value={monthExpense} icon={Wallet} />
           <KpiCard label={`FY ${fy} — Net`} value={fyNet} icon={PiggyBank} />
         </div>
+
+        {/* Ad banner — Free plan only, below summary cards, only when data loaded */}
+        {showAds && dataLoaded && (
+          <AdBanner slot="dashboard_home" showAds={showAds} />
+        )}
+
         <TrendChart data={chartData as any} />
         <DataTable rows={recent as any} title="Recent transactions" />
+
+        {/* Plan card — compact version */}
+        <PlanCard compact />
       </main>
     </div>
   );

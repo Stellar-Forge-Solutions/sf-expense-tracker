@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { LayoutGrid, ShoppingCart, Receipt, LogOut, X, CalendarCheck, LineChart, Settings, HandCoins, Users, UserCheck, Grid3x3 } from "lucide-react";
+import { LayoutGrid, ShoppingCart, Receipt, LogOut, X, CalendarCheck, LineChart, Settings, HandCoins, Users, UserCheck, Grid3x3, BarChart2 } from "lucide-react";
 import clsx from "clsx";
 import { useState } from "react";
 import { useShop } from "@/lib/shop";
@@ -16,6 +16,7 @@ const links = [
   { href: "/lending", label: "Lending", icon: HandCoins },
   { href: "/sale-vendors", label: "Sale Vendors", icon: Users },
   { href: "/purchase-vendors", label: "Purchase Vendors", icon: UserCheck },
+  { href: "/usage", label: "Usage & Billing", icon: BarChart2 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

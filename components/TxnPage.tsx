@@ -4,6 +4,9 @@ import { createClient } from "@/lib/supabase/client";
 import DataTable from "@/components/DataTable";
 import { inr } from "@/lib/finance";
 import { X } from "lucide-react";
+import { useShop } from "@/lib/shop";
+import { overageUpgradeUrl } from "@/lib/plans";
+import AdBanner from "@/components/AdBanner";
 
 type Txn = "sale" | "purchase" | "expense";
 
@@ -19,6 +22,7 @@ type Row = {
 
 export default function TxnPage({ type, title }: { type: Txn; title: string }) {
   const supabase = createClient();
+  const { shop, planResult, usage, reload: reloadShop } = useShop();
   const [rows, setRows] = useState<Row[]>([]);
   const [range, setRange] = useState<"month" | "year" | "fy" | "all">("month");
   const [form, setForm] = useState({ amount: "", category: "", txn_date: new Date().toISOString().slice(0, 10) });
@@ -29,6 +33,21 @@ export default function TxnPage({ type, title }: { type: Txn; title: string }) {
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+  // Overage
+  const [overageAcknowledged, setOverageAcknowledged] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
+
+  const { tier, plan } = planResult;
+  const used = usage.monthlyEntries;
+  const limit = plan.monthlyEntryLimit;
+  const isOverLimit = tier !== "pro" && used >= limit;
+  const requiresOverageNotice = isOverLimit && !overageAcknowledged && !editingId;
+
+  useEffect(() => {
+    createClient().auth.getSession().then(({ data: { session } }) => {
+      setEmail(session?.user?.email ?? null);
+    });
+  }, []);
 
   function rangeStart() {
     const now = new Date();
@@ -55,6 +74,7 @@ export default function TxnPage({ type, title }: { type: Txn; title: string }) {
   function resetForm() {
     setForm({ amount: "", category: "", txn_date: new Date().toISOString().slice(0, 10) });
     setEditingId(null);
+    setOverageAcknowledged(false);
   }
 
   function startEdit(row: Row) {
@@ -64,6 +84,8 @@ export default function TxnPage({ type, title }: { type: Txn; title: string }) {
       txn_date: row.txn_date,
     });
     setEditingId(row.id ?? null);
+    // Editing doesn't count toward limit — no overage notice needed
+    setOverageAcknowledged(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -89,13 +111,19 @@ export default function TxnPage({ type, title }: { type: Txn; title: string }) {
     resetForm();
     setSaving(false);
     load();
+    // Refresh usage counter after a new insert
+    if (!editingId) reloadShop();
   }
 
   async function handleDelete(row: Row) {
     if (!confirm(`Delete this ${type} of ${inr(row.amount)}?`)) return;
     await supabase.from("transactions").delete().eq("id", row.id);
     load();
+    reloadShop();
   }
+
+  const showAds = tier === "free";
+  const dataLoaded = rows.length > 0;
 
   return (
     <div className="space-y-6">
@@ -175,22 +203,58 @@ export default function TxnPage({ type, title }: { type: Txn; title: string }) {
               </button>
             )}
           </div>
-          <div>
-            <label className="text-sm font-medium">Amount (₹)</label>
-            <input className="input mt-1" type="number" required min="0" step="0.01"
-              value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+
+          {/* Over-limit notice shown BEFORE the user fills the form (only for new entries) */}
+          {requiresOverageNotice && (
+            <div className="p-3 bg-masala-red/5 border border-masala-red/20 rounded-lg text-xs">
+              <p className="font-semibold text-masala-red mb-1">
+                You&apos;ve used all {limit} included entries this month.
+              </p>
+              <p className="text-masala-brown/70 mb-2">
+                Extra entries cost ₹{plan.overageRatePerEntry} each.
+              </p>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setOverageAcknowledged(true)}
+                  className="px-3 py-1.5 rounded-lg border border-masala-brown/20 text-masala-brown/70 text-xs hover:bg-masala-brown/5"
+                >
+                  Continue anyway
+                </button>
+                {tier === "free" && (
+                  <a
+                    href={overageUpgradeUrl(shop, email)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-lg bg-masala-red text-white text-xs font-semibold"
+                  >
+                    ⭐ Upgrade to Basic (₹29/month)
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Form fields — always visible so a half-filled form is never lost */}
+          <div className={requiresOverageNotice ? "opacity-50 pointer-events-none" : ""}>
+            <div>
+              <label className="text-sm font-medium">Amount (₹)</label>
+              <input className="input mt-1" type="number" required min="0" step="0.01"
+                value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Date</label>
+              <input className="input mt-1" type="date" required
+                value={form.txn_date} onChange={(e) => setForm({ ...form, txn_date: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Category</label>
+              <input className="input mt-1" placeholder="e.g. Garam Masala, Rent..."
+                value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+            </div>
           </div>
-          <div>
-            <label className="text-sm font-medium">Date</label>
-            <input className="input mt-1" type="date" required
-              value={form.txn_date} onChange={(e) => setForm({ ...form, txn_date: e.target.value })} />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Category</label>
-            <input className="input mt-1" placeholder="e.g. Garam Masala, Rent..."
-              value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} />
-          </div>
-          <button className="btn-primary w-full" disabled={saving}>
+
+          <button className="btn-primary w-full" disabled={saving || requiresOverageNotice}>
             {saving ? "Saving..." : editingId ? `Update ${title.slice(0, -1)}` : `Add ${title.slice(0, -1)}`}
           </button>
         </form>
@@ -208,6 +272,11 @@ export default function TxnPage({ type, title }: { type: Txn; title: string }) {
             onEdit={startEdit}
             onDelete={handleDelete}
           />
+
+          {/* Ad banner — Free plan only, below list, not while loading/empty */}
+          {showAds && dataLoaded && (
+            <AdBanner slot="history_list" showAds={showAds} />
+          )}
         </div>
       </div>
     </div>

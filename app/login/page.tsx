@@ -30,14 +30,14 @@ export default function LoginPage() {
         <img src="/sf-mark-light.png" alt="" style={{ width: 56 }} />
         <div className="sfx-brand">STELLAR FORGE</div>
         <div className="sfx-sub">EXPENSE TRACKER</div>
-        <div className="sfx-badge">15-day free trial · No card needed</div>
+        <div className="sfx-badge">Free plan · 100 entries/month included · No card needed</div>
         <LoginShowcase />
       </section>
 
-      {/* Right / bottom: free trial first, sign in second */}
+      {/* Right / bottom: sign up first, sign in second */}
       <section className="sfx-panel">
-        <Link href="/signup" className="sfx-cta">Start your 15-day free trial →</Link>
-        <p className="sfx-note">We review every new shop within 1 hour (9 am – 9 pm IST) and message you on WhatsApp. Your trial starts when you are approved.</p>
+        <Link href="/signup" className="sfx-cta">Start free — 100 entries/month →</Link>
+        <p className="sfx-note">We review every new shop within 1 hour (9 am – 9 pm IST) and message you on WhatsApp. Your free plan starts when you are approved.</p>
         <div className="sfx-or">Already have an account?</div>
         <form onSubmit={handleLogin} className="card w-full max-w-sm p-8">
           <label className="text-sm font-medium">Email</label>

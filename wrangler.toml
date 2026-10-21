@@ -6,3 +6,5 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 NEXT_PUBLIC_SUPABASE_URL = "https://bnntkretjjqwoagysejn.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJubnRrcmV0ampxd29hZ3lzZWpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3MDYxNzcsImV4cCI6MjEwNzI4MjE3N30.eAtS_h6GGIMwF3K4B89cyRPdJmXaIZhLGMD2Rx__f6M"
+# Set to "true" to show real AdSense banners on the Free plan. Do NOT set in dev.
+NEXT_PUBLIC_ADSENSE_ENABLED = "true"
