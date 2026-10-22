@@ -44,8 +44,13 @@ export default function LoginPage() {
           <input className="input mt-1 mb-4" type="email" value={email}
             onChange={(e) => setEmail(e.target.value)} required />
           <label className="text-sm font-medium">Password</label>
-          <input className="input mt-1 mb-4" type="password" value={password}
+          <input className="input mt-1 mb-1" type="password" value={password}
             onChange={(e) => setPassword(e.target.value)} required />
+          <div className="flex justify-end mb-4">
+            <Link href="/forgot-password" className="text-xs text-masala-brown/70 hover:text-masala-red underline">
+              Forgot password?
+            </Link>
+          </div>
           {error && <p className="text-masala-red text-sm mb-3">{error}</p>}
           <button className="btn-primary w-full" disabled={loading}>
             {loading ? "Signing in..." : "Sign in"}

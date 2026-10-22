@@ -6,6 +6,8 @@ import Nav from "@/components/Nav";
 import { inr } from "@/lib/finance";
 import { Plus, X, Check, Edit2, Trash2, Eye } from "lucide-react";
 import NameDropdown from "@/components/NameDropdown";
+import { useShop } from "@/lib/shop";
+import { overageUpgradeUrl } from "@/lib/plans";
 
 type VendorRow = {
   id: string;
@@ -23,6 +25,7 @@ type VendorRow = {
 export default function PurchaseVendorsPage() {
   const supabase = createClient();
   const router = useRouter();
+  const { shop, planResult, usage, reload: reloadShop } = useShop();
   const [rows, setRows] = useState<VendorRow[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -41,10 +44,25 @@ export default function PurchaseVendorsPage() {
   const [loading, setLoading] = useState(true);
   const [lastEntry, setLastEntry] = useState<VendorRow | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  // Overage state
+  const [overageAcknowledged, setOverageAcknowledged] = useState(false);
+  const [email, setEmail] = useState<string | null>(null);
   // Filters
   const [selectedMonth, setSelectedMonth] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
+
+  const { tier, plan } = planResult;
+  const used = usage.monthlyEntries;
+  const limit = plan.monthlyEntryLimit;
+  const isOverLimit = tier !== "pro" && used >= limit;
+  const requiresOverageNotice = isOverLimit && !overageAcknowledged && !editingId;
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setEmail(session?.user?.email ?? null);
+    });
+  }, []);
 
   // Auto-fill vendor details when vendor name changes
   useEffect(() => {
@@ -87,6 +105,7 @@ export default function PurchaseVendorsPage() {
       date: new Date().toISOString().slice(0, 10),
     });
     setEditingId(null);
+    setOverageAcknowledged(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -159,10 +178,12 @@ export default function PurchaseVendorsPage() {
     setShowAdd(false); // close the popup automatically once the entry is saved
     resetForm();
     await load();
+    reloadShop();
   }
 
   function startEdit(row: VendorRow) {
     setEditingId(row.id);
+    setOverageAcknowledged(true);
     setForm({
       vendor_name: row.vendor_name,
       whatsapp_number: row.whatsapp_number || "",
@@ -377,7 +398,39 @@ export default function PurchaseVendorsPage() {
                 <h3 className="font-bold text-lg">{editingId ? "Edit Entry" : "Add Purchase Vendor Entry"}</h3>
                 <button onClick={() => { setShowAdd(false); resetForm(); }} className="tap-target -mr-2 text-masala-brown/50 hover:text-masala-red"><X size={20} /></button>
               </div>
-              <form onSubmit={handleSubmit} className="sheet-body pb-6">
+
+              {/* Over-limit notice shown BEFORE the user fills the form (only for new entries) */}
+              {requiresOverageNotice && (
+                <div className="mx-5 mt-4 p-3 bg-masala-red/5 border border-masala-red/20 rounded-xl text-xs">
+                  <p className="font-semibold text-masala-red mb-1">
+                    You&apos;ve used all {limit} included entries this month.
+                  </p>
+                  <p className="text-masala-brown/70 mb-2">
+                    Extra entries cost ₹{plan.overageRatePerEntry} each.
+                  </p>
+                  <div className="flex gap-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setOverageAcknowledged(true)}
+                      className="px-3 py-1.5 rounded-lg border border-masala-brown/20 text-masala-brown/70 text-xs hover:bg-masala-brown/5"
+                    >
+                      Continue anyway
+                    </button>
+                    {tier === "free" && (
+                      <a
+                        href={overageUpgradeUrl(shop, email)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-lg bg-masala-red text-white text-xs font-semibold"
+                      >
+                        ⭐ Upgrade to Basic (₹29/month)
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className={`sheet-body pb-6 ${requiresOverageNotice ? "opacity-50 pointer-events-none" : ""}`}>
                 <div>
                   <label className="field-label">Vendor Name</label>
                   <NameDropdown
