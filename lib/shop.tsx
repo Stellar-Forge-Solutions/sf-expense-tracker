@@ -84,7 +84,7 @@ export function ShopProvider({ children }: { children: ReactNode }) {
 
     // Load monthly usage in parallel
     const { start, end } = istMonthBounds();
-    const [{ count: txnCount }, { count: lendCount }] = await Promise.all([
+    const [{ count: txnCount }, { count: lendCount }, { count: saleVendorCount }, { count: purchaseVendorCount }] = await Promise.all([
       supabase
         .from("transactions")
         .select("id", { count: "exact", head: true })
@@ -97,9 +97,19 @@ export function ShopProvider({ children }: { children: ReactNode }) {
         .eq("type", "lend")
         .gte("date", start)
         .lte("date", end),
+      supabase
+        .from("sale_vendors")
+        .select("id", { count: "exact", head: true })
+        .gte("date", start)
+        .lte("date", end),
+      supabase
+        .from("purchase_vendors")
+        .select("id", { count: "exact", head: true })
+        .gte("date", start)
+        .lte("date", end),
     ]);
 
-    const monthlyEntries = (txnCount || 0) + (lendCount || 0);
+    const monthlyEntries = (txnCount || 0) + (lendCount || 0) + (saleVendorCount || 0) + (purchaseVendorCount || 0);
 
     setS({
       loading: false,

@@ -73,6 +73,13 @@ CREATE INDEX IF NOT EXISTS idx_lending_monthly_count
   ON lending (shop_id, date) 
   WHERE type = 'lend';
 
+-- Fast counting indexes on sale_vendors and purchase_vendors (shop_id, date)
+CREATE INDEX IF NOT EXISTS idx_sale_vendors_monthly_count
+  ON sale_vendors (shop_id, date);
+
+CREATE INDEX IF NOT EXISTS idx_purchase_vendors_monthly_count
+  ON purchase_vendors (shop_id, date);
+
 -- 6. Update shop_can_write function:
 -- Free plan users can now always write in the Expense Tracker as long as shop is approved!
 -- (Limits are enforced at the application level; existing paid users continue working without downgrade)
